@@ -8,7 +8,8 @@ plugins {
 
 android {
     namespace = "dev.uni.glassbar"
-    compileSdk = 36
+    // miuix-blur 0.9.4-rc01 的 AAR 元数据要求 compileSdk >= 37 (targetSdk 不受影响)
+    compileSdk = 37
 
     defaultConfig {
         applicationId = "dev.uni.glassbar"
