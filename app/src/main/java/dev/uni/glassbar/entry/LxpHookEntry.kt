@@ -2,15 +2,14 @@ package dev.uni.glassbar.entry
 
 import androidx.annotation.Keep
 import dev.uni.glassbar.BarInjector
-import dev.uni.glassbar.HookInstaller
 import dev.uni.glassbar.util.FileLogger
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
 
 /**
- * libxposed API 102 入口 (META-INF/xposed/java_init.list 注册), 与 WeKit 的 LxpHookEntry 对齐。
- * hook 本体复用 HookInstaller (de.robv 兼容层, LSPosed 运行时始终提供)。
+ * libxposed API 102 入口 (META-INF/xposed/java_init.list 注册)。
+ * hook 走 LxpHookBridge (XposedInterface.Hooker 原生 API, 不引用 de.robv 类)。
  */
 @Keep
 class LxpHookEntry : XposedModule() {
@@ -37,7 +36,7 @@ class LxpHookEntry : XposedModule() {
             return
         }
         runCatching {
-            HookInstaller.installOnce()
+            LxpHookBridge.installOnce(this)
             FileLogger.i("libxposed entry active")
         }.onFailure {
             FileLogger.w("libxposed entry install failed", it)

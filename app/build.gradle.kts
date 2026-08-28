@@ -57,9 +57,8 @@ tasks.withType<KotlinCompile>().configureEach {
 }
 
 dependencies {
-    // 与 WeKit 对齐: 双 API 共存 (libxposed 102 新入口 + de.robv 82 legacy 入口), hook 本体共用
+    // 仅 libxposed 102 (新 API); 不引用 de.robv legacy API
     compileOnly("io.github.libxposed:api:102.0.0")
-    compileOnly("de.robv.android.xposed:api:82")
     compileOnly("org.jetbrains:annotations:24.1.0") // InteractiveHighlight 的 @Language
 
     implementation(platform("androidx.compose:compose-bom:2026.08.00"))

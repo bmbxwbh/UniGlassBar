@@ -12,14 +12,14 @@ UI 组件 (`FloatingBottomBar` / `ViewBackdrop` / 动画与玻璃效果层) 直�
 | 项 | 版本 |
 |---|---|
 | libxposed API | `io.github.libxposed:api:102.0.0`（`META-INF/xposed` 注册，targetApiVersion=102） |
-| legacy API | `de.robv.android.xposed:api:82`（`assets/xposed_init` 回退入口，WeKit 同款双入口） |
+| legacy API | 已移除，仅保留 libxposed 102 单入口|
 | miuix | `top.yukonga.miuix.kmp:miuix-blur-android:0.9.4-rc01` (+ miuix-shader) |
 | Compose | BOM `2026.08.00`，material3 `1.5.0-alpha26` |
 | 工具链 | AGP 9.3.1 / Kotlin 2.4.10 / Gradle 9.7.0 / JDK 21 |
 
 ## 原理
 
-1. **入口**：双入口共用 `HookInstaller`——只 hook 框架类 `android.app.Activity.onResume`
+1. **入口**：libxposed 102 单入口 (`LxpHookBridge` 原生 Hooker)——只 hook 框架类 `android.app.Activity.onResume`
    （与加固壳的类加载解耦），在每个 Activity 里探测类名
    `me.majiajie.pagerbottomtabstrip.PageNavigationView`（按类名字符串精确匹配，不做
    `isInstance`，对爱加密壳/双 classloader 免疫）。
@@ -63,10 +63,10 @@ UI 组件 (`FloatingBottomBar` / `ViewBackdrop` / 动画与玻璃效果层) 直�
 
 ```
 app/src/main/
-├── assets/xposed_init                    legacy 入口
+   (legacy 入口已移除, 仅 libxposed 102)
 ├── resources/META-INF/xposed/            libxposed 102 注册 (java_init.list / module.prop / scope.list)
 └── java/dev/uni/glassbar/
-    ├── HookEntry.kt / entry/LxpHookEntry.kt / HookInstaller.kt   双入口 + 共用 hook
+    ├── entry/LxpHookEntry.kt + LxpHookBridge.kt               libxposed 102 入口 + 原生 hook
     ├── BarInjector.kt                    探测底栏 → 提取 → 隐藏 → 注入 ComposeView overlay
     ├── bar/
     │   ├── TabExtractor.kt               运行时图标/标题提取 (多层回退)
