@@ -13,6 +13,8 @@ import dev.uni.glassbar.bar.PagerBarBridge
 import dev.uni.glassbar.bar.TabExtractor
 import dev.uni.glassbar.ui.utils.LifecycleOwnerProvider
 import dev.uni.glassbar.ui.utils.setLifecycleOwner
+import dev.uni.glassbar.util.CrashGuard
+import dev.uni.glassbar.util.FileLogger
 import dev.uni.glassbar.util.XLog
 
 /**
@@ -34,7 +36,22 @@ object BarInjector {
 
     fun tryInject(activity: Activity) {
         if (activity.isFinishing || activity.isDestroyed) return
-        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: return
+
+        // 尽早初始化文件日志与崩溃守卫 (目录: 引力域 filesDir/uniglassbar/)
+        runCatching {
+            FileLogger.init(activity.filesDir)
+            CrashGuard.install(activity.filesDir)
+        }
+        if (FileLogger.isEnabled()) {
+            XLog.i("disabled by switch file, skip injection")
+            return
+        }
+        FileLogger.i("tryInject on ${activity.javaClass.name}")
+
+        val content = activity.findViewById<ViewGroup>(android.R.id.content) ?: run {
+            FileLogger.w("android.R.id.content not found")
+            return
+        }
         if (content.findViewWithTag<View>(OVERLAY_TAG) != null) return
 
         val originalBar = findViewByExactClassName(content, BAR_CLASS)
@@ -42,16 +59,27 @@ object BarInjector {
             scheduleRetry(activity)
             return
         }
+        FileLogger.i("native bar found: ${originalBar.javaClass.name}, children=${originalBar.childCount}")
 
         val pager = findSiblingPager(originalBar)
         val initialIndex = PagerBarBridge.currentItem(pager)
+        FileLogger.i(
+            "pager=${pager?.javaClass?.name ?: "<not found>"} initialIndex=$initialIndex"
+        )
 
         // ---- 提取原生 tab 数据 (图标/标题/配色), 失败自动走资源/占位回退 ----
         val tabs = TabExtractor.extract(activity, originalBar, initialIndex)
+        FileLogger.i(
+            "extracted ${tabs.size} tabs: " + tabs.joinToString(" | ") { t ->
+                "${t.label}(normal=${t.normalIcon != null}, selected=${t.selectedIcon != null})"
+            }
+        )
         if (tabs.isEmpty()) {
-            XLog.w("tab extraction returned empty, skip injection")
+            FileLogger.w("tab extraction returned empty, skip injection")
             return
         }
+        // 原底栏视图树结构 (诊断提取问题用)
+        FileLogger.i("bar view tree:\n" + dumpTree(originalBar, maxDepth = 3))
 
         // ---- 隐藏原生底栏 (保留视图与监听器, 停用模块即恢复) ----
         originalBar.visibility = View.GONE
@@ -103,9 +131,19 @@ object BarInjector {
         }
 
         content.addView(composeView, lp)
+        CrashGuard.setOverlayActive(true)
+        FileLogger.writeCrashCount(0) // 成功挂载后重置连续崩溃计数
+        composeView.addOnAttachStateChangeListener(object : View.OnAttachStateChangeListener {
+            override fun onViewAttachedToWindow(v: View) = CrashGuard.setOverlayActive(true)
+            override fun onViewDetachedFromWindow(v: View) = CrashGuard.setOverlayActive(false)
+        })
 
         // pager 滑动 → 药丸/选中态同步
-        PagerBarBridge.attachPageListener(pager, sync)
+        val listenerAttached = PagerBarBridge.attachPageListener(pager, sync)
+        FileLogger.i(
+            "overlay attached, listenerAttached=$listenerAttached, " +
+                "overlaySize=${composeView.width}x${composeView.height} (首次布局前为 0 属正常)"
+        )
 
         XLog.i(
             "injected: activity=${activity.javaClass.name} tabs=${tabs.size} " +
@@ -179,6 +217,22 @@ object BarInjector {
             out.add(child)
             if (child is ViewGroup) collectChildren(child, out, depth + 1, maxDepth)
         }
+    }
+
+    /** 底栏视图树结构 dump (缩进文本), 用于诊断提取为什么失败。 */
+    private fun dumpTree(root: ViewGroup, maxDepth: Int): String {
+        val sb = StringBuilder()
+        fun walk(v: View, depth: Int) {
+            if (depth > maxDepth) return
+            repeat(depth) { sb.append("  ") }
+            sb.append(v.javaClass.simpleName.ifEmpty { v.javaClass.name })
+            if (v is TextView) sb.append(" \"${v.text}\"")
+            if (v is ImageView) sb.append(" drawable=${v.drawable?.javaClass?.simpleName}")
+            sb.append('\n')
+            if (v is ViewGroup) for (i in 0 until v.childCount) walk(v.getChildAt(i), depth + 1)
+        }
+        walk(root, 0)
+        return sb.toString()
     }
 
     fun dp(dm: android.util.DisplayMetrics, value: Float): Int = Math.round(value * dm.density)

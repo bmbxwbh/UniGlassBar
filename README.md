@@ -41,6 +41,13 @@ UI 组件 (`FloatingBottomBar` / `ViewBackdrop` / 动画与玻璃效果层) 直�
 2. LSPosed 启用模块，作用域勾选 **引力域 (com.changan.uni)**；
 3. 杀掉引力域进程重开。日志过滤 `UniGlassBar`。
 
+## 内置文件日志 / 自愈开关
+
+- 日志文件：`/data/data/com.changan.uni/files/uniglassbar/log.txt`
+  （root 或"文件管理器 + Android/data 授权"均可查看；每一步注入过程、提取结果、原底栏视图树、崩溃堆栈都会写入）
+- **自愈**：注入后连续 2 次崩溃会自动在 `uniglassbar/disable` 生成熔断开关，下次启动不再注入（App 恢复原生底栏）；
+- **手动开关**：创建或删除 `uniglassbar/disable` 文件即可停用/重新启用模块注入，无需卸载。
+
 ## 已知限制
 
 - 车控/爱车页若有地图（SurfaceView/TextureView），玻璃对应区域采样为空白（WeKit 同款限制）。
