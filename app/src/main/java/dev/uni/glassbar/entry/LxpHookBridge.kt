@@ -32,6 +32,36 @@ object LxpHookBridge {
         synchronized(this) {
             if (installed) return
 
+            // ---- 启动时间线探针: 定位宿主死亡时刻 ----
+            // callApplicationOnCreate -> callActivityOnCreate -> callActivityOnResume
+            // 日志停在哪一站, 进程就死在哪一站之后。
+            for (m in Instrumentation::class.java.declaredMethods) {
+                when (m.name) {
+                    "callApplicationOnCreate" -> self.safeHook(m) { app ->
+                        FileLogger.i("application onCreate: ${app?.javaClass?.name}")
+                    }
+                    "callActivityOnCreate" -> self.safeHook(m) { v ->
+                        FileLogger.i("activity created: ${(v as? Activity)?.javaClass?.name}")
+                        (v as? Activity)?.let {
+                            try {
+                                BarInjector.tryInject(it)
+                            } catch (t: Throwable) {
+                                FileLogger.w("tryInject crashed (onCreate)", t)
+                            }
+                        }
+                    }
+                    "callActivityOnResume" -> self.safeHook(m) { v ->
+                        val activity = v as? Activity
+                        if (activity != null) logActivity(activity)
+                        try {
+                            BarInjector.tryInject(v as? Activity ?: return@safeHook)
+                        } catch (t: Throwable) {
+                            FileLogger.w("tryInject crashed (callActivityOnResume)", t)
+                        }
+                    }
+                }
+            }
+
             // 必经路径: ActivityThread 会调用 instrumentation.callActivityOnResume(activity)
             val callOnResume = Instrumentation::class.java
                 .getDeclaredMethod("callActivityOnResume", Activity::class.java)
@@ -76,7 +106,32 @@ object LxpHookBridge {
                 })
 
             installed = true
-            FileLogger.i("hooks installed (libxposed): Instrumentation.callActivityOnResume + Activity.onResume")
+            FileLogger.i("hooks installed (libxposed): app/activity create + resume probes")
+        }
+    }
+
+    /** 反射参数只可能是 0..1 个对象参数, 统一处理; hook 失败记录日志不致命。 */
+    private fun XposedModule.safeHook(
+        method: java.lang.reflect.Method,
+        after: (Any?) -> Unit,
+    ) {
+        runCatching {
+            this.hook(method)
+                .setPriority(50)
+                .setExceptionMode(XposedInterface.ExceptionMode.PASSTHROUGH)
+                .intercept(object : XposedInterface.Hooker {
+                    override fun intercept(chain: XposedInterface.Chain): Any? {
+                        val result = chain.proceed()
+                        try {
+                            after(chain.args.firstOrNull())
+                        } catch (t: Throwable) {
+                            FileLogger.w("probe callback failed: ${method.name}", t)
+                        }
+                        return result
+                    }
+                })
+        }.onFailure {
+            FileLogger.w("hook failed: ${method.name} ${method.parameterTypes.joinToString()}", it)
         }
     }
 
