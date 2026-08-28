@@ -1,9 +1,6 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest xmlns:android="http://schemas.android.com/apk/res/android"
-    xmlns:tools="http://schemas.android.com/apk/tools">
 
-    <!-- miuix-blur 声明 minSdk 33, 运行时效果已做 API 守卫, WeKit 同款覆盖 (WeKit minSdk=28) -->
-    <uses-sdk tools:overrideLibrary="top.yukonga.miuix.kmp.blur" />
 
 
     <application

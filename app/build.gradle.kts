@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "dev.uni.glassbar"
-        minSdk = 28 // WeKit 同款; miuix-blur 声明 33, 由 manifest overrideLibrary 覆盖
+        minSdk = 33 // miuix-blur 要求 33 (RuntimeShader 玻璃效果本就需要 Android 13+); 不影响被 hook 的宿主
         targetSdk = 36
         versionCode = 2
         versionName = "2.0.0"
