@@ -1,9 +1,9 @@
 package dev.uni.glassbar.entry
 
-import androidx.annotation.Keep
+import android.annotation.SuppressLint
 import dev.uni.glassbar.BarInjector
 import dev.uni.glassbar.HookInstaller
-import dev.uni.glassbar.util.XLog
+import dev.uni.glassbar.util.FileLogger
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
 import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
@@ -13,21 +13,35 @@ import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
  * hook 本体复用 HookInstaller (de.robv 兼容层, LSPosed 运行时始终提供)。
  */
 @Keep
+@SuppressLint("RestrictedApi")
 class LxpHookEntry : XposedModule() {
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
         runCatching {
-            XLog.i("libxposed entry loaded, apiVersion=$apiVersion framework=$frameworkName $frameworkVersion")
+            FileLogger.i(
+                "libxposed entry module loaded: apiVersion=$apiVersion " +
+                    "framework=$frameworkName $frameworkVersion " +
+                    "applicationInfo=${runCatching { moduleApplicationInfo.sourceDir }.getOrNull()}"
+            )
         }
     }
 
     override fun onPackageReady(param: PackageReadyParam) {
-        if (param.packageName != BarInjector.TARGET_PACKAGE) return
+        // 强制日志: 模块一进目标进程就落盘
+        runCatching {
+            FileLogger.initForce(param.packageName, param.applicationInfo?.dataDir)
+        }
+        FileLogger.i("libxposed entry: onPackageReady pkg=${param.packageName} firstPackage=${param.isFirstPackage}")
+
+        if (param.packageName != BarInjector.TARGET_PACKAGE) {
+            FileLogger.i("not target process, skip")
+            return
+        }
         runCatching {
             HookInstaller.installOnce()
-            XLog.i("libxposed entry active, target=${param.packageName}")
+            FileLogger.i("libxposed entry active")
         }.onFailure {
-            XLog.w("libxposed entry install failed", it)
+            FileLogger.w("libxposed entry install failed", it)
         }
     }
 }

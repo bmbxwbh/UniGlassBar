@@ -1,8 +1,12 @@
 package dev.uni.glassbar
 
+import android.app.Activity
 import de.robv.android.xposed.IXposedHookLoadPackage
+import de.robv.android.xposed.XC_MethodHook
 import de.robv.android.xposed.XposedBridge
+import de.robv.android.xposed.XposedHelpers
 import de.robv.android.xposed.callbacks.XC_LoadPackage
+import dev.uni.glassbar.util.FileLogger
 import dev.uni.glassbar.util.XLog
 
 /**
@@ -11,12 +15,24 @@ import dev.uni.glassbar.util.XLog
 class HookEntry : IXposedHookLoadPackage {
 
     override fun handleLoadPackage(lpparam: XC_LoadPackage.LoadPackageParam) {
-        if (lpparam.packageName != BarInjector.TARGET_PACKAGE) return
+        // 强制日志: 模块一进进程就落盘, 用于回答"模块到底加载没有"
+        runCatching {
+            FileLogger.initForce(
+                lpparam.packageName,
+                lpparam.appInfo?.dataDir,
+            )
+        }
+        FileLogger.i("legacy entry: handleLoadPackage pkg=${lpparam.packageName} proc=${lpparam.processName}")
+
+        if (lpparam.packageName != BarInjector.TARGET_PACKAGE) {
+            FileLogger.i("not target process, skip")
+            return
+        }
         runCatching {
             HookInstaller.installOnce()
-            XLog.i("legacy entry active, target=${lpparam.packageName} process=${lpparam.processName}")
+            FileLogger.i("legacy entry active")
         }.onFailure {
-            XLog.w("legacy entry install failed", it)
+            FileLogger.w("legacy entry install failed", it)
             XposedBridge.log(it)
         }
     }
