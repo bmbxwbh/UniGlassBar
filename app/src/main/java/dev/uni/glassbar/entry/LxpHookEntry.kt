@@ -1,6 +1,6 @@
 package dev.uni.glassbar.entry
 
-import android.annotation.SuppressLint
+import androidx.annotation.Keep
 import dev.uni.glassbar.BarInjector
 import dev.uni.glassbar.HookInstaller
 import dev.uni.glassbar.util.FileLogger
@@ -13,7 +13,6 @@ import io.github.libxposed.api.XposedModuleInterface.PackageReadyParam
  * hook 本体复用 HookInstaller (de.robv 兼容层, LSPosed 运行时始终提供)。
  */
 @Keep
-@SuppressLint("RestrictedApi")
 class LxpHookEntry : XposedModule() {
 
     override fun onModuleLoaded(param: ModuleLoadedParam) {
