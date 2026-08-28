@@ -6,6 +6,8 @@ import android.view.Gravity
 import android.view.View
 import android.view.ViewGroup
 import android.widget.FrameLayout
+import android.widget.ImageView
+import android.widget.TextView
 import androidx.compose.ui.platform.ComposeView
 import dev.uni.glassbar.bar.BarSync
 import dev.uni.glassbar.bar.GlassBarOverlay
