@@ -2,6 +2,7 @@ package dev.uni.glassbar.entry
 
 import androidx.annotation.Keep
 import dev.uni.glassbar.BarInjector
+import dev.uni.glassbar.util.CrashGuard
 import dev.uni.glassbar.util.FileLogger
 import io.github.libxposed.api.XposedModule
 import io.github.libxposed.api.XposedModuleInterface.ModuleLoadedParam
@@ -34,6 +35,11 @@ class LxpHookEntry : XposedModule() {
         if (param.packageName != BarInjector.TARGET_PACKAGE) {
             FileLogger.i("not target process, skip")
             return
+        }
+        // 崩溃守卫提前到入口安装: 启动早期 (任何 Activity resume 之前) 的崩溃也能落盘
+        runCatching {
+            val dataDir = param.applicationInfo?.dataDir
+            if (dataDir != null) CrashGuard.install(java.io.File(dataDir, "files"))
         }
         runCatching {
             LxpHookBridge.installOnce(this)
