@@ -68,7 +68,9 @@ dependencies {
     implementation("androidx.compose.animation:animation")
     implementation("androidx.compose.material3:material3:1.5.0-alpha26")
     implementation("androidx.lifecycle:lifecycle-runtime:2.9.4")
+    implementation("androidx.lifecycle:lifecycle-viewmodel:2.9.4") // ViewModelStore(Owner) / setViewTreeViewModelStoreOwner
     implementation("androidx.savedstate:savedstate:1.5.0")
+    implementation("androidx.core:core-ktx:1.17.0") // ViewBackdrop 的 withTranslation
 
     // miuix 系 (WeKit 同源): drawBackdrop/vibrancy/blur/lens 玻璃效果 + LayerBackdrop
     implementation("top.yukonga.miuix.kmp:miuix-blur-android:0.9.4-rc01")

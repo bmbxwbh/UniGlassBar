@@ -45,10 +45,11 @@ object TabExtractor {
         }
 
         // 统一配色: 选中色取自初始选中项, 普通色取自第一个未选中项
-        val selectedColor = infos.getOrNull(initialSelected)?.takeIf { it.labelColorSelected != 0 }
+        val selectedColor: Int = infos.getOrNull(initialSelected)?.labelColorSelected
+            ?.takeIf { it != 0 }
             ?: infos.firstOrNull { it.labelColorSelected != 0 }?.labelColorSelected
             ?: 0xFF2A3344.toInt()
-        val normalColor = infos.firstOrNull { it.labelColorNormal != 0 }?.labelColorNormal
+        val normalColor: Int = infos.firstOrNull { it.labelColorNormal != 0 }?.labelColorNormal
             ?: 0xFF8A8A8E.toInt()
 
         val resolved = infos.map {
@@ -308,10 +309,11 @@ object TabExtractor {
     private fun resourceFallback(context: Context, count: Int): List<TabInfo> {
         val res = context.resources
         val pkg = context.packageName
-        val labels = (0 until 5).map { i ->
+        val labels: List<String> = (0 until 5).map { i ->
             val id = res.getIdentifier("maintab${i + 1}", "string", pkg)
-            if (id != 0) runCatching { res.getString(id) }.getOrNull().orEmpty()
-        }.ifEmpty { FALLBACK_LABELS.map { it } }
+            if (id != 0) runCatching { res.getString(id) }.getOrNull().orEmpty() else ""
+        }
+        val effectiveLabels: List<String> = if (labels.any { it.isNotBlank() }) labels else FALLBACK_LABELS
 
         return (0 until count.coerceAtLeast(1)).map { i ->
             val idx = i % 5
@@ -323,7 +325,8 @@ object TabExtractor {
                 loadBitmap(res.getIdentifier(sName, "mipmap", pkg), res)?.let { selected = it }
             }.onFailure { XLog.w("resource fallback icon $idx failed", it) }
             TabInfo(
-                label = labels.getOrElse(idx) { idx.toString() },
+                label = effectiveLabels.getOrNull(idx)?.takeIf { it.isNotBlank() }
+                    ?: FALLBACK_LABELS.getOrElse(idx) { idx.toString() },
                 normalIcon = normal,
                 selectedIcon = selected ?: normal,
                 labelColorNormal = 0,
